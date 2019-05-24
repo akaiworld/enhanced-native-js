@@ -10,6 +10,11 @@ Promise.forEach = async fns => {
 	await run();
 	return results;
 }
+// Promise.forEach([
+// 	async () => fn1(),
+// 	async () => fn2(),
+// 	async () => fn3(),
+// ]);
 
 Promise.map = async promisesMap => {
 	const promises = [];
@@ -26,22 +31,94 @@ Promise.map = async promisesMap => {
 	});
 	return resultsMap;
 }
-
-// Promises.map({
+// Promise.map({
 // 	a: fn(),
 // 	b: fn2(),
 // });
 
 // enrich objects
 Object.prototype.entries = function(fn){
-	Object.entries(this).forEach(([key, value]) => fn([key, value]));
+	return Object.entries(this).map(([key, value], i) => fn([key, value], i));
 }
 Object.prototype.values = function(fn){
-	Object.values(this).forEach(value => fn(value));
+	return Object.values(this).map((value, i) => fn(value, i));
 }
 Object.prototype.keys = function(fn){
-	Object.keys(this).forEach(key => fn(key));
+	return Object.keys(this).map((key, i) => fn(key, i));
 }
+Object.prototype.objEntries = function(fn){
+	const map = {}
+	Object.entries(this).forEach(([key, value], i) => {
+		const obj = fn([key, value], i);
+		obj.entries(([key, value]) => {
+			map[key] = value;
+		});
+	});
+	return map;
+}
+Object.prototype.objValues = function(fn){
+	const map = {}
+	Object.values(this).forEach((value, i) => {
+		const obj = fn(value, i);
+		obj.entries(([key, value]) => {
+			map[key] = value;
+		});
+	});
+	return map;
+}
+Object.prototype.objKeys = function(fn){
+	const map = {}
+	Object.keys(this).forEach((key, i) => {
+		const obj = fn(key, i);
+		obj.entries(([key, value]) => {
+			map[key] = value;
+		});
+	});
+	return map;
+}
+Object.prototype.getEntries = function(filterFn){
+	const entries = Object.entries(this);
+	return filterFn ? entries.filter(filterFn) : entries;
+}
+Object.prototype.getValues = function(filterFn){
+	const values = Object.values(this);
+	return filterFn ? values.filter(filterFn) : values;
+}
+Object.prototype.getKeys = function(filterFn){
+	const keys = Object.keys(this);
+	return filterFn ? keys.filter(filterFn) : keys;
+}
+// obj.getKeys()
+// obj.getKeys(key => key != 123)
+
+Object.prototype.calcEntries = function(...props){
+	return this.getEntries().calc(...props);
+}
+Object.prototype.calcValues = function(...props){
+	return this.getValues().calc(...props);
+}
+Object.prototype.calcKeys = function(...props){
+	return this.getKeys().calc(...props);
+}
+// obj.calcKeys((data, item) => {
+// 	data.push(item);
+// })
+// obj.calcKeys({}, (data, item, i) => {
+// 	data[i] = item;
+// })
+
+Object.prototype.findEntry = function(fn){
+	return this.getEntries().find(fn);
+}
+// obj.findEntry(([key, value], i) => key == 'b')
+Object.prototype.findValue = function(fn){
+	return this.getValues().find(fn);
+}
+// obj.findValue((value, i) => value == 'b')
+Object.prototype.findKey = function(fn){
+	return this.getKeys().find(fn);
+}
+// obj.findKey((key, i) => key == 'b')
 Object.prototype.getProp = function(prop, _default){
 	parent = this;
 	prop = typeof prop === 'string' ? prop.split('.') : '';
@@ -158,3 +235,20 @@ Array.prototype.defaultProp = function(prop, data){
 	}
 	return value;
 }
+Array.prototype.calc = function(...props){
+	const fn = props.pop();
+	value = props[0] || [];
+	this.forEach((item, i) => {
+		const result = fn(value, item, i, this);
+		if(result !== undefined){
+			value = result;
+		}
+	});
+	return value;
+}
+// arr.calc((data, item) => {
+// 	data.push(item)
+// })
+// arr.calc({}, (data, item, i) => {
+// 	data[i] = item;
+// })
